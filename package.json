@@ -3,12 +3,24 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Cloud-render sandbox: deterministic MP4 motion graphics via Playwright + ffmpeg in GitHub Actions.",
+  "description": "Art-directed Remotion composition: 48.8s Indonesian Dota 2 narrative.",
   "scripts": {
-    "render": "node scripts/render.mjs"
+    "dev": "remotion studio",
+    "ensure-browser": "remotion browser ensure",
+    "validate": "node scripts/validate-timeline.mjs",
+    "typecheck": "tsc --noEmit",
+    "render": "remotion render src/index.tsx DotaChronicle output/dota-chronicle-remotion.mp4 --codec=h264 --crf=18 --audio-codec=aac"
   },
   "dependencies": {
-    "playwright": "^1.64.1"
+    "@remotion/cli": "4.0.536",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "4.0.536"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
   },
   "engines": {
     "node": ">=20"
