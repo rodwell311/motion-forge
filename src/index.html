@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Motion Forge</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1920px;height:1080px;overflow:hidden;background:#06060a}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,'Helvetica Neue',Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  #stage{position:relative;width:1920px;height:1080px}
+  canvas{position:absolute;top:0;left:0}
+  .overlay{position:absolute;z-index:10}
+  .title-wrap{
+    top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    text-align:center;
+    width:100%;
+  }
+  .title{
+    font-size:140px;
+    font-weight:800;
+    letter-spacing:-0.05em;
+    color:#fff;
+    line-height:1;
+    opacity:0;
+  }
+  .subtitle{
+    font-size:30px;
+    font-weight:300;
+    letter-spacing:0.5em;
+    text-transform:uppercase;
+    color:rgba(255,255,255,.55);
+    margin-top:28px;
+    opacity:0;
+    padding-left:0.5em;
+  }
+  .accent-bar{
+    position:absolute;
+    bottom:22%;left:50%;
+    transform:translateX(-50%);
+    height:3px;width:0;
+    background:linear-gradient(90deg,transparent 0%,#ff6b35 20%,#ffa500 50%,#00d4ff 80%,transparent 100%);
+    z-index:5;
+    box-shadow:0 0 20px rgba(255,107,53,.5);
+  }
+  .corner{
+    position:absolute;
+    font-size:14px;
+    font-weight:500;
+    letter-spacing:0.25em;
+    color:rgba(255,255,255,.25);
+    text-transform:uppercase;
+    z-index:5;
+    font-variant-numeric:tabular-nums;
+  }
+  .corner.tl{top:48px;left:48px}
+  .corner.tr{top:48px;right:48px}
+  .corner.bl{bottom:48px;left:48px}
+  .corner.br{bottom:48px;right:48px}
+  .badge{
+    display:inline-block;
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:4px;
+    padding:4px 12px;
+    font-size:12px;
+    letter-spacing:0.2em;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="bg" width="1920" height="1080"></canvas>
+  <div class="accent-bar" id="bar"></div>
+  <div class="overlay title-wrap">
+    <div class="title" id="title">MOTION FORGE</div>
+    <div class="subtitle" id="subtitle">Cloud Render Sandbox</div>
+  </div>
+  <div class="corner tl"><span class="badge">MOTION-FORGE</span></div>
+  <div class="corner tr"><span class="badge">1920 &times; 1080</span></div>
+  <div class="corner bl"><span class="badge">H.264 &middot; MP4</span></div>
+  <div class="corner br"><span class="badge" id="tc">00:00.000</span></div>
+</div>
+
+<script>
+(function(){
+  var canvas=document.getElementById('bg');
+  var ctx=canvas.getContext('2d');
+  var W=1920,H=1080;
+  var titleEl=document.getElementById('title');
+  var subEl=document.getElementById('subtitle');
+  var barEl=document.getElementById('bar');
+  var tcEl=document.getElementById('tc');
+  var stageEl=document.getElementById('stage');
+
+  var customTitle=window.__TITLE__;
+  if(customTitle){titleEl.textContent=customTitle;}
+
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+  function lerp(a,b,t){return a+(b-a)*t;}
+  function easeOutCubic(t){return 1-Math.pow(1-t,3);}
+  function easeInOutCubic(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+  function easeOutQuint(t){return 1-Math.pow(1-t,5);}
+
+  var orbs=[
+    {x:280,y:220,r:220,hue:25,op:.18,sx:.5,sy:.4},
+    {x:1640,y:820,r:260,hue:200,op:.12,sx:.4,sy:.5},
+    {x:960,y:480,r:340,hue:35,op:.10,sx:.3,sy:.3},
+    {x:1450,y:280,r:180,hue:15,op:.14,sx:.6,sy:.5},
+    {x:480,y:880,r:240,hue:190,op:.11,sx:.45,sy:.4}
+  ];
+
+  var sparks=[];
+  for(var i=0;i<90;i++){
+    sparks.push({
+      x:Math.random()*W,
+      y:Math.random()*H,
+      vy:-30-Math.random()*80,
+      vx:(Math.random()-.5)*30,
+      r:.8+Math.random()*2.5,
+      hue:18+Math.random()*35,
+      seed:Math.random()*6,
+      maxLife:2.5+Math.random()*3.5
+    });
+  }
+
+  var hexSize=52;
+  var hexW=hexSize*Math.sqrt(3);
+  var hexH=hexSize*1.5;
+  var hexCols=Math.ceil(W/hexW)+2;
+  var hexRows=Math.ceil(H/hexH)+2;
+
+  function renderFrame(ms){
+    var t=ms/1000;
+    var p=t/6;
+
+    ctx.fillStyle='#06060a';
+    ctx.fillRect(0,0,W,H);
+
+    var ga=t*0.25;
+    var cx=W/2,cy=H/2;
+    var r1=0,r2=Math.max(1,900);
+    var grad=ctx.createRadialGradient(
+      cx+Math.cos(ga)*250,cy+Math.sin(ga)*180,r1,
+      cx,cy,r2
+    );
+    var hs=Math.sin(t*0.4)*8;
+    grad.addColorStop(0,'hsla('+(232+hs)+',35%,13%,1)');
+    grad.addColorStop(.45,'hsla('+(240+hs)+',28%,8%,1)');
+    grad.addColorStop(1,'hsla(250,22%,4%,1)');
+    ctx.fillStyle=grad;
+    ctx.fillRect(0,0,W,H);
+
+    for(var oi=0;oi<orbs.length;oi++){
+      var o=orbs[oi];
+      var ox=o.x+Math.sin(t*o.sx+oi)*60;
+      var oy=o.y+Math.cos(t*o.sy+oi)*50;
+      var orad=Math.max(1,o.r*(1+Math.sin(t*0.6+oi)*0.12));
+      var og=ctx.createRadialGradient(ox,oy,0,ox,oy,orad);
+      og.addColorStop(0,'hsla('+o.hue+',85%,62%,'+o.op+')');
+      og.addColorStop(.6,'hsla('+o.hue+',85%,55%,'+(o.op*0.3)+')');
+      og.addColorStop(1,'hsla('+o.hue+',85%,50%,0)');
+      ctx.fillStyle=og;
+      ctx.beginPath();
+      ctx.arc(ox,oy,orad,0,Math.PI*2);
+      ctx.fill();
+    }
+
+    ctx.strokeStyle='rgba(255,255,255,0.025)';
+    ctx.lineWidth=1;
+    for(var row=0;row<hexRows;row++){
+      for(var col=0;col<hexCols;col++){
+        var hx=col*hexW+(row%2)*hexW/2-hexW;
+        var hy=row*hexH-hexH;
+        var pulse=Math.sin(t*0.8+col*0.3+row*0.2)*0.5+0.5;
+        if(pulse>0.85){
+          ctx.strokeStyle='rgba(255,165,0,'+((pulse-0.85)*0.15)+')';
+        }else{
+          ctx.strokeStyle='rgba(255,255,255,0.022)';
+        }
+        ctx.beginPath();
+        for(var k=0;k<6;k++){
+          var ang=Math.PI/3*k+Math.PI/6;
+          var px=hx+Math.cos(ang)*hexSize;
+          var py=hy+Math.sin(ang)*hexSize;
+          if(k===0)ctx.moveTo(px,py);
+          else ctx.lineTo(px,py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+
+    for(var si=0;si<sparks.length;si++){
+      var s=sparks[si];
+      var life=((t+s.seed)%s.maxLife)/s.maxLife;
+      var py=s.y+s.vy*life*s.maxLife;
+      var px=s.x+s.vx*life*s.maxLife;
+      var alpha=clamp(Math.sin(life*Math.PI)*0.7,0,1);
+      if(py<-10||px<-10||px>W+10){continue;}
+      ctx.fillStyle='hsla('+s.hue+',90%,65%,'+alpha+')';
+      ctx.beginPath();
+      ctx.arc(px,py,s.r,0,Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle='hsla('+s.hue+',90%,65%,'+(alpha*0.15)+')';
+      ctx.beginPath();
+      ctx.arc(px,py,s.r*4,0,Math.PI*2);
+      ctx.fill();
+    }
+
+    var titleP=clamp((t-0.3)/1.2,0,1);
+    var te=easeOutQuint(titleP);
+    titleEl.style.opacity=te;
+    titleEl.style.transform='translateY('+lerp(60,0,te)+'px)';
+
+    var subP=clamp((t-0.9)/1.0,0,1);
+    var se=easeOutCubic(subP);
+    subEl.style.opacity=se*0.7;
+    subEl.style.transform='translateY('+lerp(25,0,se)+'px)';
+
+    var barP=clamp((t-1.1)/1.6,0,1);
+    var be=easeInOutCubic(barP);
+    barEl.style.width=(be*520)+'px';
+
+    var fo=clamp((t-5.5)/0.5,0,1);
+    stageEl.style.opacity=1-fo;
+
+    var mins=Math.floor(t/60);
+    var secs=Math.floor(t%60);
+    var mils=Math.floor((t%1)*1000);
+    tcEl.textContent=
+      (mins<10?'0':'')+mins+':'+
+      (secs<10?'0':'')+secs+'.'+
+      (mils<100?(mils<10?'00':'0'):'')+mils;
+  }
+
+  window.__renderFrame=renderFrame;
+
+  if(!window.__PLAYWRIGHT__){
+    var start=performance.now();
+    function loop(now){
+      var el=now-start;
+      if(el>6000){start=now;}
+      renderFrame(el%6000);
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  }
+})();
+</script>
+</body>
+</html>

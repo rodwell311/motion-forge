@@ -1,0 +1,16 @@
+{
+  "name": "motion-forge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Cloud-render sandbox: deterministic MP4 motion graphics via Playwright + ffmpeg in GitHub Actions.",
+  "scripts": {
+    "render": "node scripts/render.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.64.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
