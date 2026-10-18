@@ -2,17 +2,11 @@ name: Render
 
 on:
   workflow_dispatch:
-    inputs:
-      title:
-        description: 'Custom title text (optional)'
-        required: false
-        default: ''
-        type: string
 
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +19,9 @@ jobs:
       - name: Validate render script syntax
         run: node --check scripts/render.mjs
 
+      - name: Validate timeline
+        run: node scripts/render.mjs --validate-timeline
+
       - name: Install dependencies
         run: npm ci
 
@@ -35,13 +32,11 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
 
       - name: Render motion graphic
-        env:
-          RENDER_TITLE: ${{ inputs.title }}
         run: node scripts/render.mjs
 
-      - name: Upload artifact
+      - name: Upload final video
         uses: actions/upload-artifact@v4
         with:
-          name: motion-forge-output
-          path: output/
+          name: dota-chronicle
+          path: output/dota-chronicle.mp4
           retention-days: 7

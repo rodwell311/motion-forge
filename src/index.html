@@ -2,248 +2,785 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Motion Forge</title>
+<title>Dota Chronicle</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  html,body{width:1920px;height:1080px;overflow:hidden;background:#06060a}
+  html,body{width:1920px;height:1080px;overflow:hidden;background:#050509}
   body{
-    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,'Helvetica Neue',Arial,sans-serif;
+    font-family:'Helvetica Neue','Segoe UI',Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
+    color:#f4f1ea;
   }
-  #stage{position:relative;width:1920px;height:1080px}
-  canvas{position:absolute;top:0;left:0}
-  .overlay{position:absolute;z-index:10}
-  .title-wrap{
-    top:50%;left:50%;
-    transform:translate(-50%,-50%);
-    text-align:center;
-    width:100%;
+  #stage{position:relative;width:1920px;height:1080px;background:#050509;overflow:hidden}
+  canvas{position:absolute;top:0;left:0;display:block}
+  #grain{mix-blend-mode:overlay;opacity:.16;pointer-events:none;z-index:8}
+  .vignette{
+    position:absolute;inset:0;z-index:7;pointer-events:none;
+    background:radial-gradient(ellipse 62% 52% at 50% 48%,
+      transparent 0%, transparent 42%,
+      rgba(0,0,0,.42) 78%, rgba(0,0,0,.82) 100%);
   }
-  .title{
-    font-size:140px;
-    font-weight:800;
-    letter-spacing:-0.05em;
-    color:#fff;
-    line-height:1;
-    opacity:0;
+  .scanlines{
+    position:absolute;inset:0;z-index:6;pointer-events:none;opacity:.05;
+    background:repeating-linear-gradient(0deg,
+      rgba(255,255,255,.18) 0px, rgba(255,255,255,.18) 1px,
+      transparent 1px, transparent 3px);
   }
-  .subtitle{
-    font-size:30px;
-    font-weight:300;
-    letter-spacing:0.5em;
+  .meta{
+    position:absolute;z-index:11;pointer-events:none;
+    font-size:13px;letter-spacing:.42em;
+    color:rgba(244,241,234,.22);text-transform:uppercase;
+    font-variant-numeric:tabular-nums;font-weight:500;
+  }
+  .meta.tl{top:42px;left:54px}
+  .meta.tr{top:42px;right:54px}
+  .meta.bl{bottom:42px;left:54px}
+  .meta.br{bottom:42px;right:54px}
+  .meta .dot{
+    display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:#ff6b35;box-shadow:0 0 8px #ff6b35;margin:0 10px;vertical-align:middle;
+  }
+  .caption{
+    position:absolute;z-index:12;pointer-events:none;
+    color:#f4f1ea;font-weight:800;line-height:.92;
     text-transform:uppercase;
-    color:rgba(255,255,255,.55);
-    margin-top:28px;
-    opacity:0;
-    padding-left:0.5em;
+    opacity:0;will-change:transform,opacity,filter;
+    text-rendering:geometricPrecision;
   }
-  .accent-bar{
-    position:absolute;
-    bottom:22%;left:50%;
-    transform:translateX(-50%);
-    height:3px;width:0;
-    background:linear-gradient(90deg,transparent 0%,#ff6b35 20%,#ffa500 50%,#00d4ff 80%,transparent 100%);
-    z-index:5;
-    box-shadow:0 0 20px rgba(255,107,53,.5);
+  .caption .ember{color:#ff6b35;text-shadow:0 0 24px rgba(255,107,53,.45)}
+  .caption .teal{color:#2dd4bf;text-shadow:0 0 24px rgba(45,212,191,.4)}
+  .caption .ward{color:#43e6b0;text-shadow:0 0 24px rgba(67,230,176,.4)}
+  .caption .ghost{color:rgba(244,241,234,.85)}
+  #cap{top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:84%}
+  #capSub{
+    position:absolute;z-index:12;pointer-events:none;opacity:0;
+    text-align:center;width:100%;left:0;
+    font-size:22px;letter-spacing:.6em;
+    color:rgba(244,241,234,.5);text-transform:uppercase;font-weight:300;
+    text-rendering:geometricPrecision;
   }
-  .corner{
-    position:absolute;
-    font-size:14px;
-    font-weight:500;
-    letter-spacing:0.25em;
-    color:rgba(255,255,255,.25);
-    text-transform:uppercase;
-    z-index:5;
-    font-variant-numeric:tabular-nums;
+  .frame-corners{position:absolute;inset:36px;z-index:9;pointer-events:none}
+  .frame-corners::before,.frame-corners::after,
+  .frame-corners > b::before,.frame-corners > b::after{
+    content:'';position:absolute;width:34px;height:34px;
+    border:1px solid rgba(244,241,234,.18);
   }
-  .corner.tl{top:48px;left:48px}
-  .corner.tr{top:48px;right:48px}
-  .corner.bl{bottom:48px;left:48px}
-  .corner.br{bottom:48px;right:48px}
-  .badge{
-    display:inline-block;
-    border:1px solid rgba(255,255,255,.15);
-    border-radius:4px;
-    padding:4px 12px;
-    font-size:12px;
-    letter-spacing:0.2em;
-  }
+  .frame-corners::before{top:0;left:0;border-right:0;border-bottom:0}
+  .frame-corners::after{top:0;right:0;border-left:0;border-bottom:0}
+  .frame-corners > b{position:absolute;inset:0}
+  .frame-corners > b::before{bottom:0;left:0;border-right:0;border-top:0}
+  .frame-corners > b::after{bottom:0;right:0;border-left:0;border-top:0}
 </style>
 </head>
 <body>
 <div id="stage">
   <canvas id="bg" width="1920" height="1080"></canvas>
-  <div class="accent-bar" id="bar"></div>
-  <div class="overlay title-wrap">
-    <div class="title" id="title">MOTION FORGE</div>
-    <div class="subtitle" id="subtitle">Cloud Render Sandbox</div>
-  </div>
-  <div class="corner tl"><span class="badge">MOTION-FORGE</span></div>
-  <div class="corner tr"><span class="badge">1920 &times; 1080</span></div>
-  <div class="corner bl"><span class="badge">H.264 &middot; MP4</span></div>
-  <div class="corner br"><span class="badge" id="tc">00:00.000</span></div>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+  <canvas id="grain" width="1920" height="1080"></canvas>
+  <div class="frame-corners"><b></b></div>
+  <div class="caption" id="cap"></div>
+  <div id="capSub"></div>
+  <div class="meta tl"><span class="dot"></span>DOTA &middot; CHRONICLE</div>
+  <div class="meta tr">1920 &times; 1080 &middot; 48.8s</div>
+  <div class="meta bl">RENDER &middot; CANVAS</div>
+  <div class="meta br" id="tc">00:00.000</div>
 </div>
 
 <script>
+window.__SCENES__ = [
+  {"start":0,    "end":6.4,  "id":"choice"},
+  {"start":6.4,  "end":10.4, "id":"approach"},
+  {"start":10.4, "end":17.6, "id":"ward"},
+  {"start":17.6, "end":23.2, "id":"teamfight"},
+  {"start":23.2, "end":28.4, "id":"mechanics"},
+  {"start":28.4, "end":36.0, "id":"readmap"},
+  {"start":36.0, "end":48.8, "id":"assault"}
+];
+
 (function(){
-  var canvas=document.getElementById('bg');
-  var ctx=canvas.getContext('2d');
-  var W=1920,H=1080;
-  var titleEl=document.getElementById('title');
-  var subEl=document.getElementById('subtitle');
-  var barEl=document.getElementById('bar');
-  var tcEl=document.getElementById('tc');
-  var stageEl=document.getElementById('stage');
+  var canvas = document.getElementById('bg');
+  var ctx = canvas.getContext('2d');
+  var grainCanvas = document.getElementById('grain');
+  var gctx = grainCanvas.getContext('2d');
+  var capEl = document.getElementById('cap');
+  var subEl = document.getElementById('capSub');
+  var tcEl = document.getElementById('tc');
 
-  var customTitle=window.__TITLE__;
-  if(customTitle){titleEl.textContent=customTitle;}
+  var W = 1920, H = 1080;
+  var cx = W / 2, cy = H / 2;
 
-  function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
-  function lerp(a,b,t){return a+(b-a)*t;}
-  function easeOutCubic(t){return 1-Math.pow(1-t,3);}
-  function easeInOutCubic(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
-  function easeOutQuint(t){return 1-Math.pow(1-t,5);}
+  // --- seeded PRNG (mulberry32). NO Math.random inside renderFrame. ---
+  function mulberry32(a){
+    return function(){
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  var rng = mulberry32(0xC0FFEE);
 
-  var orbs=[
-    {x:280,y:220,r:220,hue:25,op:.18,sx:.5,sy:.4},
-    {x:1640,y:820,r:260,hue:200,op:.12,sx:.4,sy:.5},
-    {x:960,y:480,r:340,hue:35,op:.10,sx:.3,sy:.3},
-    {x:1450,y:280,r:180,hue:15,op:.14,sx:.6,sy:.5},
-    {x:480,y:880,r:240,hue:190,op:.11,sx:.45,sy:.4}
-  ];
+  // --- math helpers (all deterministic) ---
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+  function lerp(a,b,t){ return a + (b - a) * t; }
+  function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+  function easeInOutCubic(t){ return t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
+  function easeOutQuint(t){ return 1 - Math.pow(1 - t, 5); }
+  function easeOutExpo(t){ return t === 1 ? 1 : 1 - Math.pow(2, -10 * t); }
 
-  var sparks=[];
-  for(var i=0;i<90;i++){
-    sparks.push({
-      x:Math.random()*W,
-      y:Math.random()*H,
-      vy:-30-Math.random()*80,
-      vx:(Math.random()-.5)*30,
-      r:.8+Math.random()*2.5,
-      hue:18+Math.random()*35,
-      seed:Math.random()*6,
-      maxLife:2.5+Math.random()*3.5
+  function sceneAt(t){
+    var S = window.__SCENES__;
+    for (var i = 0; i < S.length; i++){
+      var s = S[i];
+      if (t >= s.start && t < s.end){
+        return { s: s, idx: i, local: t - s.start, dur: s.end - s.start, p: (t - s.start) / (s.end - s.start) };
+      }
+    }
+    var last = S[S.length - 1];
+    return { s: last, idx: S.length - 1, local: last.end - last.start, dur: last.end - last.start, p: 1 };
+  }
+
+  // --- precomputed atmospheric elements (seeded, set up once) ---
+  var wisps = [];
+  for (var i = 0; i < 16; i++){
+    wisps.push({
+      x: rng() * W, y: rng() * H,
+      r: 240 + rng() * 420,
+      hue: 200 + rng() * 40,
+      op: 0.05 + rng() * 0.07,
+      sx: 0.18 + rng() * 0.22, sy: 0.12 + rng() * 0.18,
+      ph: rng() * 6.283
+    });
+  }
+  var embers = [];
+  for (var i = 0; i < 260; i++){
+    embers.push({
+      x: rng() * W, y: rng() * H,
+      vy: -15 - rng() * 55, vx: (rng() - 0.5) * 18,
+      r: 0.5 + rng() * 2.0,
+      hue: 14 + rng() * 24,
+      seed: rng() * 6,
+      life: 2.5 + rng() * 4.5
+    });
+  }
+  var inkBlobs = [];
+  for (var i = 0; i < 10; i++){
+    inkBlobs.push({
+      x: rng() * W, y: rng() * H,
+      r: 300 + rng() * 500,
+      op: 0.04 + rng() * 0.05,
+      sx: 0.10 + rng() * 0.20, sy: 0.08 + rng() * 0.15,
+      ph: rng() * 6.283
     });
   }
 
-  var hexSize=52;
-  var hexW=hexSize*Math.sqrt(3);
-  var hexH=hexSize*1.5;
-  var hexCols=Math.ceil(W/hexW)+2;
-  var hexRows=Math.ceil(H/hexH)+2;
+  // --- hex grid (strategic map) precomputed ---
+  var hexSize = 34;
+  var hexW = hexSize * Math.sqrt(3);
+  var hexH = hexSize * 1.5;
+  var hexCols = Math.ceil(W / hexW) + 2;
+  var hexRows = Math.ceil(H / hexH) + 2;
+  var hexCells = [];
+  for (var r = 0; r < hexRows; r++){
+    for (var c = 0; c < hexCols; c++){
+      var hx = c * hexW + (r % 2) * hexW / 2 - hexW;
+      var hy = r * hexH - hexH;
+      var d = Math.hypot(hx - cx, hy - cy);
+      hexCells.push({ x: hx, y: hy, d: d, j: rng(), phase: rng() * 6.283 });
+    }
+  }
 
-  function renderFrame(ms){
-    var t=ms/1000;
-    var p=t/6;
+  // --- hero markers (5). Simple ember diamonds, NOT character likenesses. ---
+  var heroCount = 5;
+  var heroes = [];
+  for (var i = 0; i < heroCount; i++){
+    var ang = -Math.PI / 2 + (i - (heroCount - 1) / 2) * 0.46;
+    heroes.push({
+      ang: ang,
+      startDist: 920,
+      ph: rng() * 6.283,
+      j: rng()
+    });
+  }
 
-    ctx.fillStyle='#06060a';
-    ctx.fillRect(0,0,W,H);
+  // --- ancient (crystalline spire) facets ---
+  var spireHeight = 320;
+  var spireBaseW = 130;
+  var ancientFacets = [];
+  for (var i = 0; i < 8; i++){
+    ancientFacets.push({
+      yOff: lerp(spireHeight, 0, i / 7),
+      w: lerp(spireBaseW, 24, i / 7) * 0.5,
+      hue: lerp(18, 40, i / 7),
+      j: rng()
+    });
+  }
 
-    var ga=t*0.25;
-    var cx=W/2,cy=H/2;
-    var r1=0,r2=Math.max(1,900);
-    var grad=ctx.createRadialGradient(
-      cx+Math.cos(ga)*250,cy+Math.sin(ga)*180,r1,
-      cx,cy,r2
+  // --- team fight particles (precomputed, seeded) ---
+  var fightParticles = [];
+  for (var i = 0; i < 200; i++){
+    var a = rng() * 6.283;
+    var sp = 200 + rng() * 720;
+    fightParticles.push({ a: a, sp: sp, r: 0.6 + rng() * 2.4, hue: 10 + rng() * 30, life: 0.6 + rng() * 1.2, j: rng() });
+  }
+
+  // --- smoke puffs (seeded) ---
+  var smokePuffs = [];
+  for (var i = 0; i < 42; i++){
+    smokePuffs.push({
+      x: rng() * W, y: rng() * H,
+      r: 80 + rng() * 220,
+      ph: rng() * 6.283, sx: 0.2 + rng() * 0.3, j: rng()
+    });
+  }
+
+  // --- film grain tile (256x256, seeded, tiled onto grain canvas once) ---
+  var gTile = document.createElement('canvas');
+  gTile.width = 256; gTile.height = 256;
+  var gtctx = gTile.getContext('2d');
+  var gImg = gtctx.createImageData(256, 256);
+  var grng = mulberry32(0x12345678);
+  for (var i = 0; i < gImg.data.length; i += 4){
+    var v = (grng() * 255) | 0;
+    gImg.data[i] = v; gImg.data[i+1] = v; gImg.data[i+2] = v; gImg.data[i+3] = 255;
+  }
+  gtctx.putImageData(gImg, 0, 0);
+  for (var x = 0; x < W; x += 256){
+    for (var y = 0; y < H; y += 256){
+      gctx.drawImage(gTile, x, y);
+    }
+  }
+
+  // --- caption schedule: deliberate line breaks, sparing motion ---
+  var captionSchedules = [
+    { scene: 'choice',     start: 0.6, end: 5.4,  html: '<span class="ghost">DOTA</span> <span class="ember">2</span>',                                                         size: 148, sub: 'PILIHAN JADI PERANG' },
+    { scene: 'approach',   start: 0.4, end: 3.6,  html: 'LIMA HERO.<br><span class="ember">SATU ANCIENT.</span>',                                                          size: 96,  sub: '' },
+    { scene: 'ward',       start: 0.3, end: 3.4,  html: '<span class="ward">VISION</span>',                                                                              size: 128, sub: 'WARD &middot; TERANG' },
+    { scene: 'ward',       start: 3.6, end: 7.0,  html: '<span class="teal">SMOKE</span>',                                                                               size: 128, sub: 'GANK &middot; KABUR' },
+    { scene: 'teamfight',  start: 0.2, end: 4.2,  html: '<span class="ember">TEAM FIGHT</span>',                                                                         size: 140, sub: 'BALIK KEADAAN' },
+    { scene: 'readmap',    start: 0.3, end: 5.5,  html: 'BACA <span class="ember">PETA</span>',                                                                          size: 124, sub: 'CEPAT &middot; AMBIL RISIKO' },
+    { scene: 'assault',    start: 1.0, end: 11.5, html: 'NO VICTORY IS<br><span class="ember">FREE.</span>',                                                             size: 160, sub: '' }
+  ];
+
+  function updateCaption(t, sc){
+    var sched = null, i, c, local = t - sc.s.start;
+    for (i = 0; i < captionSchedules.length; i++){
+      c = captionSchedules[i];
+      if (c.scene !== sc.s.id) continue;
+      if (local >= c.start && local <= c.end){ sched = c; break; }
+    }
+    if (!sched){
+      capEl.style.opacity = 0;
+      subEl.style.opacity = 0;
+      return;
+    }
+    var inP  = clamp((local - sched.start) / 0.6, 0, 1);
+    var outP = clamp((local - (sched.end - 0.7)) / 0.7, 0, 1);
+    var op   = inP * (1 - outP);
+    var eIn  = easeOutQuint(inP);
+    capEl.innerHTML = sched.html;
+    capEl.style.fontSize = sched.size + 'px';
+    capEl.style.letterSpacing = '0.02em';
+    capEl.style.opacity = op;
+    capEl.style.transform =
+      'translate(-50%,-50%) translateY(' + lerp(40, 0, eIn) + 'px) scale(' + lerp(1.08, 1, eIn) + ')';
+    capEl.style.filter = 'blur(' + lerp(8, 0, eIn) + 'px)';
+
+    if (sched.sub){
+      subEl.innerHTML = sched.sub;
+      subEl.style.top = 'calc(50% + ' + (sched.size * 0.55 + 28) + 'px)';
+      subEl.style.opacity = op * 0.7;
+      subEl.style.transform = 'translateY(' + lerp(20, 0, eIn) + 'px)';
+    } else {
+      subEl.style.opacity = 0;
+    }
+  }
+
+  // ---------- drawing primitives ----------
+  function fillBase(t){
+    ctx.fillStyle = '#050509';
+    ctx.fillRect(0, 0, W, H);
+    var ga = t * 0.18;
+    var r2 = Math.max(1, 1100);
+    var g = ctx.createRadialGradient(
+      cx + Math.cos(ga) * 180, cy + Math.sin(ga * 1.3) * 120, 0,
+      cx, cy, r2
     );
-    var hs=Math.sin(t*0.4)*8;
-    grad.addColorStop(0,'hsla('+(232+hs)+',35%,13%,1)');
-    grad.addColorStop(.45,'hsla('+(240+hs)+',28%,8%,1)');
-    grad.addColorStop(1,'hsla(250,22%,4%,1)');
-    ctx.fillStyle=grad;
-    ctx.fillRect(0,0,W,H);
+    var hs = Math.sin(t * 0.3) * 6;
+    g.addColorStop(0,    'hsla(' + (230 + hs) + ',40%,10%,1)');
+    g.addColorStop(0.5,  'hsla(' + (240 + hs) + ',32%,6%,1)');
+    g.addColorStop(1,    'hsla(250,28%,3%,1)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
 
-    for(var oi=0;oi<orbs.length;oi++){
-      var o=orbs[oi];
-      var ox=o.x+Math.sin(t*o.sx+oi)*60;
-      var oy=o.y+Math.cos(t*o.sy+oi)*50;
-      var orad=Math.max(1,o.r*(1+Math.sin(t*0.6+oi)*0.12));
-      var og=ctx.createRadialGradient(ox,oy,0,ox,oy,orad);
-      og.addColorStop(0,'hsla('+o.hue+',85%,62%,'+o.op+')');
-      og.addColorStop(.6,'hsla('+o.hue+',85%,55%,'+(o.op*0.3)+')');
-      og.addColorStop(1,'hsla('+o.hue+',85%,50%,0)');
-      ctx.fillStyle=og;
+  function drawInkBlobs(t){
+    for (var i = 0; i < inkBlobs.length; i++){
+      var b = inkBlobs[i];
+      var ox = Math.sin(t * b.sx + b.ph) * 80;
+      var oy = Math.cos(t * b.sy + b.ph) * 60;
+      var or = Math.max(1, b.r * (1 + Math.sin(t * 0.4 + b.ph) * 0.08));
+      var g = ctx.createRadialGradient(b.x + ox, b.y + oy, 0, b.x + ox, b.y + oy, or);
+      g.addColorStop(0,   'rgba(20,18,28,' + b.op + ')');
+      g.addColorStop(0.6, 'rgba(18,16,24,' + (b.op * 0.4) + ')');
+      g.addColorStop(1,   'rgba(15,14,20,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(b.x + ox, b.y + oy, or, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function drawEmberWisps(t){
+    for (var i = 0; i < wisps.length; i++){
+      var w = wisps[i];
+      var ox = Math.sin(t * w.sx + w.ph) * 70;
+      var oy = Math.cos(t * w.sy + w.ph) * 50;
+      var or = Math.max(1, w.r * (1 + Math.sin(t * 0.5 + w.ph) * 0.1));
+      var g = ctx.createRadialGradient(w.x + ox, w.y + oy, 0, w.x + ox, w.y + oy, or);
+      g.addColorStop(0,    'hsla(' + w.hue + ',80%,58%,' + w.op + ')');
+      g.addColorStop(0.55, 'hsla(' + w.hue + ',80%,52%,' + (w.op * 0.35) + ')');
+      g.addColorStop(1,    'hsla(' + w.hue + ',80%,50%,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(w.x + ox, w.y + oy, or, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function drawEmbers(t, intensity){
+    intensity = clamp(intensity, 0, 1.6);
+    for (var i = 0; i < embers.length; i++){
+      var s = embers[i];
+      var life = ((t + s.seed) % s.life) / s.life;
+      var py = s.y + s.vy * life * s.life;
+      var px = s.x + s.vx * life * s.life;
+      var alpha = clamp(Math.sin(life * Math.PI) * 0.65 * intensity, 0, 1);
+      if (alpha <= 0.01) continue;
+      if (py < -10 || px < -10 || px > W + 10) continue;
+      ctx.fillStyle = 'hsla(' + s.hue + ',92%,62%,' + alpha + ')';
+      ctx.beginPath(); ctx.arc(px, py, Math.max(0.5, s.r), 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'hsla(' + s.hue + ',92%,62%,' + (alpha * 0.12) + ')';
+      ctx.beginPath(); ctx.arc(px, py, Math.max(1, s.r * 5), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function drawHexGrid(t, reveal, glow){
+    reveal = clamp(reveal, 0, 1);
+    glow   = clamp(glow, 0, 1);
+    var maxR = lerp(0, 1320, easeOutCubic(reveal));
+    for (var i = 0; i < hexCells.length; i++){
+      var h = hexCells[i];
+      if (h.d > maxR) continue;
+      var edgeFade = clamp(1 - (h.d - maxR + 130) / 130, 0, 1);
+      var pulse = Math.sin(t * 0.9 + h.phase) * 0.5 + 0.5;
+      var baseA = (0.022 + glow * 0.06 * pulse) * edgeFade;
+      ctx.strokeStyle = 'rgba(244,241,234,' + baseA + ')';
+      ctx.lineWidth = 1;
+      if (glow > 0.3 && pulse > 0.72){
+        ctx.strokeStyle = 'rgba(255,107,53,' + ((pulse - 0.72) * glow * 0.45 * edgeFade) + ')';
+      }
       ctx.beginPath();
-      ctx.arc(ox,oy,orad,0,Math.PI*2);
+      for (var k = 0; k < 6; k++){
+        var ang = Math.PI / 3 * k + Math.PI / 6;
+        var px = h.x + Math.cos(ang) * hexSize;
+        var py = h.y + Math.sin(ang) * hexSize;
+        if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      if (glow > 0.4 && h.j > 0.86 && pulse > 0.6){
+        ctx.fillStyle = 'rgba(255,140,60,' + ((pulse - 0.6) * glow * 0.5 * edgeFade) + ')';
+        ctx.beginPath(); ctx.arc(h.x, h.y, 1.6, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  function drawAncient(t, x, y, integrity, glow){
+    integrity = clamp(integrity, 0, 1);
+    glow = clamp(glow, 0, 1);
+    var spireH = spireHeight * integrity;
+
+    // ground glow
+    var gr = Math.max(1, 260);
+    var g = ctx.createRadialGradient(x, y - spireH * 0.5, 0, x, y - spireH * 0.5, gr);
+    g.addColorStop(0,   'rgba(255,140,60,' + (0.4 * glow + 0.1) + ')');
+    g.addColorStop(0.5, 'rgba(255,107,53,' + (0.18 * glow) + ')');
+    g.addColorStop(1,   'rgba(255,107,53,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y - spireH * 0.5, gr, 0, Math.PI * 2); ctx.fill();
+
+    // spire facets
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalCompositeOperation = 'lighter';
+    for (var i = 0; i < ancientFacets.length - 1; i++){
+      var f0 = ancientFacets[i], f1 = ancientFacets[i + 1];
+      if (f0.yOff > spireH) continue;
+      var y0 = f0.yOff * integrity;
+      var y1 = Math.min(f1.yOff, spireH) * integrity;
+      var w0 = Math.max(1, f0.w * integrity);
+      var w1 = Math.max(1, Math.min(f1.w, f0.w) * integrity);
+      var g2 = ctx.createLinearGradient(-w0, -y0, w0, -y1);
+      g2.addColorStop(0,   'rgba(60,40,30,.55)');
+      g2.addColorStop(0.5, 'hsla(' + f0.hue + ',72%,55%,' + (0.5 * glow + 0.15) + ')');
+      g2.addColorStop(1,   'rgba(30,20,16,.65)');
+      ctx.fillStyle = g2;
+      ctx.beginPath();
+      ctx.moveTo(-w0, -y0); ctx.lineTo(w0, -y0);
+      ctx.lineTo(w1, -y1); ctx.lineTo(-w1, -y1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,160,80,' + (0.3 * glow + 0.1) + ')';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    if (glow > 0){
+      ctx.fillStyle = 'rgba(255,210,140,' + (0.6 * glow) + ')';
+      ctx.beginPath();
+      ctx.arc(x, y - spireH * 0.5, Math.max(1, 8 * glow), 0, Math.PI * 2);
       ctx.fill();
     }
+  }
 
-    ctx.strokeStyle='rgba(255,255,255,0.025)';
-    ctx.lineWidth=1;
-    for(var row=0;row<hexRows;row++){
-      for(var col=0;col<hexCols;col++){
-        var hx=col*hexW+(row%2)*hexW/2-hexW;
-        var hy=row*hexH-hexH;
-        var pulse=Math.sin(t*0.8+col*0.3+row*0.2)*0.5+0.5;
-        if(pulse>0.85){
-          ctx.strokeStyle='rgba(255,165,0,'+((pulse-0.85)*0.15)+')';
-        }else{
-          ctx.strokeStyle='rgba(255,255,255,0.022)';
-        }
+  function drawHeroMarker(x, y, t, glow){
+    glow = clamp(glow, 0, 1);
+    ctx.save();
+    ctx.translate(x, y);
+    // halo
+    var gr = Math.max(1, 42);
+    var g = ctx.createRadialGradient(0, 0, 0, 0, 0, gr);
+    g.addColorStop(0, 'rgba(255,140,60,' + (0.55 * glow) + ')');
+    g.addColorStop(1, 'rgba(255,107,53,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, gr, 0, Math.PI * 2); ctx.fill();
+    // diamond marker (not a character likeness)
+    ctx.fillStyle = 'rgba(255,205,145,' + (0.92 * glow) + ')';
+    ctx.strokeStyle = 'rgba(255,107,53,' + glow + ')';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, -11); ctx.lineTo(9, 0); ctx.lineTo(0, 11); ctx.lineTo(-9, 0);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+
+  // ---------- scene drawing ----------
+  // SCENE 1 (0-6.4): choice becomes war; strategic map slowly forms.
+  function drawChoice(t, sc){
+    var reveal = clamp(sc.p * 1.15, 0, 1);
+    var glow   = clamp((sc.p - 0.4) * 1.5, 0, 1);
+    drawHexGrid(t, reveal, glow * 0.6);
+    // convergence lines from corners to center
+    if (sc.p > 0.5){
+      var la = clamp((sc.p - 0.5) * 2, 0, 1) * 0.12;
+      ctx.strokeStyle = 'rgba(255,107,53,' + la + ')';
+      ctx.lineWidth = 1;
+      var pts = [[0, 0], [W, 0], [0, H], [W, H]];
+      for (var i = 0; i < pts.length; i++){
         ctx.beginPath();
-        for(var k=0;k<6;k++){
-          var ang=Math.PI/3*k+Math.PI/6;
-          var px=hx+Math.cos(ang)*hexSize;
-          var py=hy+Math.sin(ang)*hexSize;
-          if(k===0)ctx.moveTo(px,py);
-          else ctx.lineTo(px,py);
-        }
-        ctx.closePath();
+        ctx.moveTo(pts[i][0], pts[i][1]);
+        ctx.lineTo(cx, cy);
         ctx.stroke();
       }
     }
-
-    for(var si=0;si<sparks.length;si++){
-      var s=sparks[si];
-      var life=((t+s.seed)%s.maxLife)/s.maxLife;
-      var py=s.y+s.vy*life*s.maxLife;
-      var px=s.x+s.vx*life*s.maxLife;
-      var alpha=clamp(Math.sin(life*Math.PI)*0.7,0,1);
-      if(py<-10||px<-10||px>W+10){continue;}
-      ctx.fillStyle='hsla('+s.hue+',90%,65%,'+alpha+')';
-      ctx.beginPath();
-      ctx.arc(px,py,s.r,0,Math.PI*2);
-      ctx.fill();
-      ctx.fillStyle='hsla('+s.hue+',90%,65%,'+(alpha*0.15)+')';
-      ctx.beginPath();
-      ctx.arc(px,py,s.r*4,0,Math.PI*2);
-      ctx.fill();
-    }
-
-    var titleP=clamp((t-0.3)/1.2,0,1);
-    var te=easeOutQuint(titleP);
-    titleEl.style.opacity=te;
-    titleEl.style.transform='translateY('+lerp(60,0,te)+'px)';
-
-    var subP=clamp((t-0.9)/1.0,0,1);
-    var se=easeOutCubic(subP);
-    subEl.style.opacity=se*0.7;
-    subEl.style.transform='translateY('+lerp(25,0,se)+'px)';
-
-    var barP=clamp((t-1.1)/1.6,0,1);
-    var be=easeInOutCubic(barP);
-    barEl.style.width=(be*520)+'px';
-
-    var fo=clamp((t-5.5)/0.5,0,1);
-    stageEl.style.opacity=1-fo;
-
-    var mins=Math.floor(t/60);
-    var secs=Math.floor(t%60);
-    var mils=Math.floor((t%1)*1000);
-    tcEl.textContent=
-      (mins<10?'0':'')+mins+':'+
-      (secs<10?'0':'')+secs+'.'+
-      (mils<100?(mils<10?'00':'0'):'')+mils;
+    drawEmbers(t, 0.6 + glow * 0.4);
   }
 
-  window.__renderFrame=renderFrame;
+  // SCENE 2 (6.4-10.4): five hero markers approach one Ancient.
+  function drawApproach(t, sc){
+    drawHexGrid(t, 1, 0.32);
+    drawAncient(t, cx, cy + 40, 1, 0.7);
+    var approachP = easeInOutCubic(clamp(sc.p, 0, 1));
+    for (var i = 0; i < heroes.length; i++){
+      var h = heroes[i];
+      var dist = lerp(h.startDist, 150, approachP);
+      var hx = cx + Math.cos(h.ang) * dist;
+      var hy = cy + Math.sin(h.ang) * dist * 0.65 + 40;
+      // trail
+      for (var k = 0; k < 6; k++){
+        var kt = k / 5;
+        var tx = cx + Math.cos(h.ang) * lerp(h.startDist, dist, kt);
+        var ty = cy + Math.sin(h.ang) * lerp(h.startDist, dist, kt) * 0.65 + 40;
+        var ta = (1 - kt) * 0.18 * (0.5 + Math.sin(t * 3 + h.ph) * 0.3);
+        ctx.fillStyle = 'rgba(255,140,60,' + ta + ')';
+        ctx.beginPath(); ctx.arc(tx, ty, Math.max(1, (1 - kt) * 4), 0, Math.PI * 2); ctx.fill();
+      }
+      drawHeroMarker(hx, hy, t, 0.9);
+    }
+    drawEmbers(t, 0.7);
+  }
 
-  if(!window.__PLAYWRIGHT__){
-    var start=performance.now();
+  // SCENE 3 (10.4-17.6): ward vision + smoke gank.
+  function drawWard(t, sc){
+    drawHexGrid(t, 1, 0.22);
+    drawAncient(t, cx, cy + 40, 1, 0.5);
+
+    var splitLocal = 3.6; // 14.0s: VISION -> SMOKE
+    if (sc.local < splitLocal){
+      // VISION: green ward circle expands
+      var wp = clamp(sc.local / splitLocal, 0, 1);
+      var wr = lerp(0, 480, easeOutExpo(wp));
+      var wardX = cx - 360, wardY = cy - 120;
+      ctx.fillStyle = 'rgba(67,230,176,0.95)';
+      ctx.beginPath(); ctx.arc(wardX, wardY, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      var gr = Math.max(1, wr);
+      var g = ctx.createRadialGradient(wardX, wardY, 0, wardX, wardY, gr);
+      g.addColorStop(0,   'rgba(67,230,176,0.18)');
+      g.addColorStop(0.6, 'rgba(67,230,176,0.06)');
+      g.addColorStop(1,   'rgba(67,230,176,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(wardX, wardY, gr, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(67,230,176,' + (0.45 * (1 - wp * 0.5)) + ')';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(wardX, wardY, gr, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    } else {
+      // SMOKE: teal smoke billows, concealing movement
+      var sp = clamp((sc.local - splitLocal) / (sc.dur - splitLocal), 0, 1);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (var i = 0; i < smokePuffs.length; i++){
+        var p = smokePuffs[i];
+        var drift = sp * 300;
+        var px = p.x + Math.sin(t * p.sx + p.ph) * 40 + drift * (0.5 + p.j * 0.5);
+        var py = p.y + Math.cos(t * p.sx * 0.7 + p.ph) * 30 - sp * 60;
+        var pr = Math.max(1, p.r * (0.5 + sp * 0.8));
+        var fade = clamp(sp * 1.4 - p.j * 0.3, 0, 1);
+        var g = ctx.createRadialGradient(px, py, 0, px, py, pr);
+        g.addColorStop(0,   'rgba(45,212,191,' + (0.12 * fade) + ')');
+        g.addColorStop(0.6, 'rgba(45,212,191,' + (0.04 * fade) + ')');
+        g.addColorStop(1,   'rgba(45,212,191,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+      // concealed hero markers gliding under smoke
+      for (var i = 0; i < heroes.length; i++){
+        var h = heroes[i];
+        var dist = lerp(150, 90, sp);
+        var hx = cx + Math.cos(h.ang) * dist;
+        var hy = cy + Math.sin(h.ang) * dist * 0.65 + 40;
+        ctx.fillStyle = 'rgba(255,140,60,' + (0.5 * (1 - sp * 0.4)) + ')';
+        ctx.beginPath(); ctx.arc(hx, hy, Math.max(1, 5), 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    drawEmbers(t, 0.4);
+  }
+
+  // SCENE 4 (17.6-23.2): team fight reverses a losing match.
+  function drawTeamFight(t, sc){
+    drawHexGrid(t, 1, 0.5);
+    var fx = cx, fy = cy + 40;
+    var flash = 0;
+    if (sc.local > 0.6 && sc.local < 1.4){
+      flash = clamp(1 - Math.abs(sc.local - 1.0) / 0.4, 0, 1);
+    }
+    // impact particles
+    if (sc.local < 3.5){
+      for (var i = 0; i < fightParticles.length; i++){
+        var p = fightParticles[i];
+        var life = ((sc.local * 1.2 + p.j) % p.life) / p.life;
+        if (life > 1) continue;
+        var d = p.sp * life;
+        var px = fx + Math.cos(p.a) * d;
+        var py = fy + Math.sin(p.a) * d;
+        var a = clamp(Math.sin(life * Math.PI) * 0.8, 0, 1);
+        ctx.fillStyle = 'hsla(' + p.hue + ',95%,62%,' + a + ')';
+        ctx.beginPath(); ctx.arc(px, py, Math.max(0.5, p.r), 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // shockwave
+    if (sc.local < 2){
+      var ringR = lerp(0, 600, easeOutExpo(clamp(sc.local / 1.5, 0, 1)));
+      ctx.strokeStyle = 'rgba(255,160,80,' + (0.6 * (1 - clamp(sc.local / 2, 0, 1))) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(fx, fy, Math.max(1, ringR), 0, Math.PI * 2); ctx.stroke();
+    }
+    // Ancient dips then recovers (the reversal)
+    var integ;
+    if (sc.local < 1.6) integ = lerp(1, 0.55, easeInOutCubic(clamp(sc.local / 1.6, 0, 1)));
+    else               integ = lerp(0.55, 0.85, easeOutCubic(clamp((sc.local - 1.6) / 3, 0, 1)));
+    drawAncient(t, fx, fy, integ, 0.9 + flash * 0.5);
+    if (flash > 0){
+      ctx.fillStyle = 'rgba(255,220,160,' + (flash * 0.4) + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
+    drawEmbers(t, 1.0 + flash * 0.5);
+  }
+
+  // SCENE 5 (23.2-28.4): mechanics matter but strategy wins war.
+  function drawMechanics(t, sc){
+    drawHexGrid(t, 1, 0.6);
+    drawAncient(t, cx, cy + 40, 0.85, 0.6);
+    // strategic overlay lines (faint tactical vectors)
+    var lp = clamp((sc.local - 0.3) / 2, 0, 1);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = 'rgba(255,107,53,' + (0.18 * lp) + ')';
+    ctx.lineWidth = 1;
+    var lines = [
+      [120, 820, 540, 540],
+      [540, 540, cx, cy + 40],
+      [1800, 820, 1380, 540],
+      [1380, 540, cx, cy + 40],
+      [960, 180, cx, cy + 40]
+    ];
+    for (var i = 0; i < lines.length; i++){
+      var L = lines[i];
+      var seg = clamp(lp * 4 - i * 0.4, 0, 1);
+      var ex = lerp(L[0], L[2], easeOutCubic(seg));
+      var ey = lerp(L[1], L[3], easeOutCubic(seg));
+      ctx.beginPath(); ctx.moveTo(L[0], L[1]); ctx.lineTo(ex, ey); ctx.stroke();
+      // arrowhead at endpoint when seg near 1
+      if (seg > 0.9){
+        var ah = (seg - 0.9) * 10;
+        ctx.fillStyle = 'rgba(255,107,53,' + (0.4 * lp) + ')';
+        ctx.beginPath(); ctx.arc(ex, ey, Math.max(1, 3 + ah * 0.4), 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
+    drawEmbers(t, 0.7);
+  }
+
+  // SCENE 6 (28.4-36.0): read the map faster, take risks.
+  function drawReadMap(t, sc){
+    var panX = Math.sin(sc.local * 1.6) * 180;
+    var panY = Math.cos(sc.local * 1.1) * 60;
+    ctx.save();
+    ctx.translate(panX, panY);
+    drawHexGrid(t, 1, 0.7);
+    drawAncient(t, cx, cy + 40, 0.85, 0.6);
+    // scanning sweep line (ember)
+    var scanY = lerp(0, H, (sc.local % 2) / 2);
+    var g = ctx.createLinearGradient(0, scanY - 60, 0, scanY + 60);
+    g.addColorStop(0,   'rgba(255,107,53,0)');
+    g.addColorStop(0.5, 'rgba(255,107,53,0.12)');
+    g.addColorStop(1,   'rgba(255,107,53,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(-200, scanY - 60, W + 400, 120);
+    // risk flares: brief ember jets from random seeded hex cells
+    var flareN = 3;
+    for (var f = 0; f < flareN; f++){
+      var idx = (Math.floor(sc.local * 2) + f * 7) % hexCells.length;
+      var hc = hexCells[idx];
+      var fr = Math.max(1, 60 + Math.sin(t * 8 + f) * 20);
+      var fg = ctx.createRadialGradient(hc.x, hc.y, 0, hc.x, hc.y, fr);
+      fg.addColorStop(0, 'rgba(255,160,80,0.5)');
+      fg.addColorStop(1, 'rgba(255,107,53,0)');
+      ctx.fillStyle = fg;
+      ctx.beginPath(); ctx.arc(hc.x, hc.y, fr, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    drawEmbers(t, 1.0);
+  }
+
+  // SCENE 7 (36.0-48.8): final Ancient assault + line "NO VICTORY IS FREE."
+  function drawAssault(t, sc){
+    var destroyP = clamp(sc.local / 3.0, 0, 1);
+    var integ = lerp(0.85, 0, easeInOutCubic(destroyP));
+    drawHexGrid(t, 1, 0.4 + destroyP * 0.4);
+    // explosion particles
+    if (sc.local < 4){
+      for (var i = 0; i < fightParticles.length; i++){
+        var p = fightParticles[i];
+        var life = ((sc.local * 1.5 + p.j) % p.life) / p.life;
+        if (life > 1) continue;
+        var d = p.sp * life * 1.4;
+        var px = cx + Math.cos(p.a) * d;
+        var py = cy + 40 + Math.sin(p.a) * d;
+        var a = clamp(Math.sin(life * Math.PI) * 0.9, 0, 1);
+        ctx.fillStyle = 'hsla(' + p.hue + ',95%,60%,' + a + ')';
+        ctx.beginPath(); ctx.arc(px, py, Math.max(0.5, p.r * 1.4), 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    drawAncient(t, cx, cy + 40, integ, 0.8 + destroyP * 0.6);
+    // multiple shockwaves
+    for (var w = 0; w < 3; w++){
+      var ws = w * 0.8;
+      var wl = sc.local - ws;
+      if (wl > 0 && wl < 2){
+        var wr = lerp(0, 900, easeOutExpo(wl / 2));
+        ctx.strokeStyle = 'rgba(255,160,80,' + (0.5 * (1 - wl / 2) * (1 - w * 0.25)) + ')';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, cy + 40, Math.max(1, wr), 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+    // final ember storm
+    drawEmbers(t, sc.local > 4 ? 1.4 : 1.0);
+    // slow fade to near-black at very end so the final line holds
+    if (sc.local > 10){
+      var fa = clamp((sc.local - 10) / 1.5, 0, 1);
+      ctx.fillStyle = 'rgba(5,5,9,' + (fa * 0.55) + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  // ---------- grain + meta ----------
+  function updateGrain(t){
+    var ox = (Math.sin(t * 23.1) * 10) | 0;
+    var oy = (Math.cos(t * 19.7) * 10) | 0;
+    grainCanvas.style.transform = 'translate(' + ox + 'px,' + oy + 'px)';
+  }
+
+  function updateMeta(t){
+    var mins = Math.floor(t / 60);
+    var secs = Math.floor(t % 60);
+    var mils = Math.floor((t % 1) * 1000);
+    tcEl.textContent =
+      (mins < 10 ? '0' : '') + mins + ':' +
+      (secs < 10 ? '0' : '') + secs + '.' +
+      (mils < 100 ? (mils < 10 ? '00' : '0') : '') + mils;
+  }
+
+  // ---------- main render entry ----------
+  function renderFrame(ms){
+    var t = ms / 1000;
+    var sc = sceneAt(t);
+
+    fillBase(t);
+    drawInkBlobs(t);
+    drawEmberWisps(t);
+
+    // camera shake during team fight and final assault
+    var shakeX = 0, shakeY = 0;
+    if (sc.s.id === 'teamfight' && sc.local < 2){
+      var sa = clamp(1 - sc.local / 2, 0, 1);
+      shakeX = Math.sin(t * 42) * 12 * sa;
+      shakeY = Math.cos(t * 38) * 9 * sa;
+    } else if (sc.s.id === 'assault' && sc.local < 3){
+      var sa2 = clamp(1 - sc.local / 3, 0, 1);
+      shakeX = Math.sin(t * 30) * 14 * sa2;
+      shakeY = Math.cos(t * 26) * 11 * sa2;
+    }
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
+
+    if      (sc.s.id === 'choice')     drawChoice(t, sc);
+    else if (sc.s.id === 'approach')   drawApproach(t, sc);
+    else if (sc.s.id === 'ward')       drawWard(t, sc);
+    else if (sc.s.id === 'teamfight')  drawTeamFight(t, sc);
+    else if (sc.s.id === 'mechanics')  drawMechanics(t, sc);
+    else if (sc.s.id === 'readmap')    drawReadMap(t, sc);
+    else if (sc.s.id === 'assault')    drawAssault(t, sc);
+
+    ctx.restore();
+
+    updateGrain(t);
+    updateCaption(t, sc);
+    updateMeta(t);
+  }
+
+  window.__renderFrame = renderFrame;
+
+  // live preview loop (NOT used by Playwright)
+  if (!window.__PLAYWRIGHT__){
+    var start = performance.now();
     function loop(now){
-      var el=now-start;
-      if(el>6000){start=now;}
-      renderFrame(el%6000);
+      var el = now - start;
+      if (el > 48800){ start = now; }
+      renderFrame(el % 48800);
       requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
