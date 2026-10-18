@@ -74,7 +74,13 @@ async function main() {
   // ---- 5. narration audio exists in public/ ----
   await access(resolve(root, 'public', 'dota-narration.wav'));
 
-  // ---- 6. composition uses <Audio + staticFile with the wav ----
+  // ---- 6. every matte environment is local and committed ----
+  const matteFiles = ['draft.png', 'lanes.png', 'vision.png', 'turn.png', 'strategy.png', 'readmap.png', 'assault.png'];
+  for (const file of matteFiles) {
+    await access(resolve(root, 'public', 'assets', 'mattes', file));
+  }
+
+  // ---- 7. composition uses <Audio + staticFile with the wav ----
   const compSrc = await readFile(resolve(root, 'src', 'DotaChronicle.tsx'), 'utf8');
   assert.match(compSrc, /import\s+\{[^}]*\bAudio\b[^}]*\}\s+from\s+['"]remotion['"]/, 'DotaChronicle: Audio must be imported from remotion');
   assert.match(compSrc, /import\s+\{[^}]*\bstaticFile\b[^}]*\}\s+from\s+['"]remotion['"]/, 'DotaChronicle: staticFile must be imported from remotion');
@@ -94,12 +100,12 @@ async function main() {
   assert.equal(Number(capMatch[1]), 1230, 'FINAL_CAPTION_FRAME must be 1230');
 
   console.log(
-    `validate-timeline: OK — ${beats.length} beats, ${DURATION_FRAMES} frames @ ${FPS}fps ` +
+    `validate-timeline: OK - ${beats.length} beats, ${DURATION_FRAMES} frames @ ${FPS}fps ` +
     `(${DURATION_SEC}s), audio public/dota-narration.wav, <Audio src={staticFile("dota-narration.wav")} /> confirmed.`
   );
 }
 
 main().catch((err) => {
-  console.error('validate-timeline: FAIL —', err.message);
+  console.error('validate-timeline: FAIL -', err.message);
   process.exit(1);
 });
