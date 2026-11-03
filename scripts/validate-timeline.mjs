@@ -99,9 +99,16 @@ async function main() {
   assert.ok(capMatch, 'timeline.ts: FINAL_CAPTION_FRAME constant not found');
   assert.equal(Number(capMatch[1]), 1230, 'FINAL_CAPTION_FRAME must be 1230');
 
+  // ---- 9. validate browser motion timeline ----
+  const browserTimelineSrc = await readFile(resolve(root, 'src', 'browserTimeline.ts'), 'utf8');
+  assert.match(browserTimelineSrc, /fps:\s*30/, 'browserTimeline.ts: fps = 30');
+  assert.match(browserTimelineSrc, /totalFrames:\s*210/, 'browserTimeline.ts: totalFrames = 210');
+
+  const browserCompSrc = await readFile(resolve(root, 'src', 'BrowserMotion.tsx'), 'utf8');
+  assert.match(browserCompSrc, /export\s+const\s+BrowserMotion/, 'BrowserMotion.tsx: must export BrowserMotion');
+
   console.log(
-    `validate-timeline: OK - ${beats.length} beats, ${DURATION_FRAMES} frames @ ${FPS}fps ` +
-    `(${DURATION_SEC}s), audio public/dota-narration.wav, <Audio src={staticFile("dota-narration.wav")} /> confirmed.`
+    `validate-timeline: OK - DotaChronicle + BrowserMotion timelines verified.`
   );
 }
 

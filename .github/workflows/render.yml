@@ -2,6 +2,13 @@ name: Render
 
 on:
   workflow_dispatch:
+    inputs:
+      composition:
+        description: 'Composition ID to render'
+        required: true
+        default: 'BrowserMotion'
+  push:
+    branches: [main]
 
 jobs:
   render:
@@ -29,11 +36,14 @@ jobs:
         run: npx remotion browser ensure
 
       - name: Render composition
-        run: npx remotion render src/index.tsx DotaChronicle output/dota-chronicle-remotion.mp4 --codec=h264 --crf=18 --audio-codec=aac
+        run: |
+          COMP_ID="${{ inputs.composition || 'BrowserMotion' }}"
+          echo "Rendering composition: $COMP_ID"
+          npx remotion render src/index.tsx "$COMP_ID" "output/$COMP_ID.mp4" --codec=h264 --crf=18
 
       - name: Upload final video
         uses: actions/upload-artifact@v4
         with:
-          name: dota-chronicle-remotion
-          path: output/dota-chronicle-remotion.mp4
+          name: ${{ inputs.composition || 'BrowserMotion' }}
+          path: output/*.mp4
           retention-days: 7
