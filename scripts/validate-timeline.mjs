@@ -102,7 +102,7 @@ async function main() {
   // ---- 9. validate browser motion timeline ----
   const browserTimelineSrc = await readFile(resolve(root, 'src', 'browserTimeline.ts'), 'utf8');
   assert.match(browserTimelineSrc, /fps:\s*30/, 'browserTimeline.ts: fps = 30');
-  assert.match(browserTimelineSrc, /totalFrames:\s*210/, 'browserTimeline.ts: totalFrames = 210');
+  assert.match(browserTimelineSrc, /totalFrames:\s*270/, 'browserTimeline.ts: totalFrames = 270');
 
   const browserCompSrc = await readFile(resolve(root, 'src', 'BrowserMotion.tsx'), 'utf8');
   assert.match(browserCompSrc, /export\s+const\s+BrowserMotion/, 'BrowserMotion.tsx: must export BrowserMotion');
