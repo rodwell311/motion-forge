@@ -3,3 +3,4 @@ output/
 out/
 .cache/
 *.mp4
+!public/*.mp4

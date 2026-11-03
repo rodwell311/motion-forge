@@ -107,8 +107,16 @@ async function main() {
   const browserCompSrc = await readFile(resolve(root, 'src', 'BrowserMotion.tsx'), 'utf8');
   assert.match(browserCompSrc, /export\s+const\s+BrowserMotion/, 'BrowserMotion.tsx: must export BrowserMotion');
 
+  // ---- 10. validate windah viral short timeline ----
+  const windahTimelineSrc = await readFile(resolve(root, 'src', 'windahTimeline.ts'), 'utf8');
+  assert.match(windahTimelineSrc, /fps:\s*30/, 'windahTimeline.ts: fps = 30');
+  assert.match(windahTimelineSrc, /totalFrames:\s*840/, 'windahTimeline.ts: totalFrames = 840');
+
+  const windahCompSrc = await readFile(resolve(root, 'src', 'WindahViralShort.tsx'), 'utf8');
+  assert.match(windahCompSrc, /export\s+const\s+WindahViralShort/, 'WindahViralShort.tsx: must export WindahViralShort');
+
   console.log(
-    `validate-timeline: OK - DotaChronicle + BrowserMotion timelines verified.`
+    `validate-timeline: OK - DotaChronicle + BrowserMotion + WindahViralShort verified.`
   );
 }
 

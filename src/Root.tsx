@@ -4,6 +4,8 @@ import { DotaChronicle } from './DotaChronicle';
 import { DURATION_FRAMES, FPS, WIDTH, HEIGHT } from './timeline';
 import { BrowserMotion } from './BrowserMotion';
 import { BROWSER_TIMELINE } from './browserTimeline';
+import { WindahViralShort } from './WindahViralShort';
+import { WINDAH_TIMELINE } from './windahTimeline';
 
 export const Root: React.FC = () => {
   return (
@@ -24,6 +26,15 @@ export const Root: React.FC = () => {
         fps={BROWSER_TIMELINE.fps}
         width={BROWSER_TIMELINE.width}
         height={BROWSER_TIMELINE.height}
+        defaultProps={{}}
+      />
+      <Composition
+        id="WindahViralShort"
+        component={WindahViralShort}
+        durationInFrames={WINDAH_TIMELINE.totalFrames}
+        fps={WINDAH_TIMELINE.fps}
+        width={WINDAH_TIMELINE.width}
+        height={WINDAH_TIMELINE.height}
         defaultProps={{}}
       />
     </>

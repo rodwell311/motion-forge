@@ -10,6 +10,7 @@
     "validate": "node scripts/validate-timeline.mjs",
     "typecheck": "tsc --noEmit",
     "render:browser": "remotion render src/index.tsx BrowserMotion output/BrowserMotion.mp4 --codec=h264 --crf=18",
+    "render:windah": "remotion render src/index.tsx WindahViralShort output/WindahViralShort.mp4 --codec=h264 --crf=18",
     "render": "remotion render src/index.tsx DotaChronicle output/dota-chronicle-remotion.mp4 --codec=h264 --crf=18 --audio-codec=aac"
   },
   "dependencies": {
